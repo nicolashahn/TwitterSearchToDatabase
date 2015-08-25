@@ -1,40 +1,54 @@
+# -*- coding: utf-8 -*-
+
 # NLDS Lab
 # Nicolas Hahn
 # Search Twitter using their search API
 # Download tweets to given output file
 
-# -*- coding: utf-8 -*-
-
-from twitter import *
-from urllib.parse import quote_plus
-from settings import token, token_key, con_secret, con_secret_key
+from TwitterSearch import *
+from settings import consumer_key, consumer_secret, access_token, access_token_secret
 from getpass import getpass
+import sys
+import pickle
 
-# prepend this to every search call
-search_url = "https://api.twitter.com/1.1/search/tweets.json"
+def searchQuery(ts, query):
+	print('Searching for: '+query)
+	tso = TwitterSearchOrder()
+	keywords = query.split(' ')
+	tso.set_keywords(keywords)
+	tso.set_language('en')
+	tso.set_include_entities(True)
 
-# t = Twitter(auth=OAuth(token, token_key, con_secret, con_secret_key))
+	out_file_name = 'query-'+'_'.join(keywords)
+	output = open(out_file_name, 'w', encoding='utf-8')
 
-
+	i = 0
+	for tweet in ts.search_tweets_iterable(tso):
+		i += 1
+		output.write(str(tweet)+'\n')
+	output.close()
+	print('query "'+query+'" got '+str(i)+' tweets')
 
 def main():
 
-	username = input("Enter your username:")
-	password = getpass("Enter your password:")
+	ts = TwitterSearch(
+		consumer_key = consumer_key,
+		consumer_secret = consumer_secret,
+		access_token = access_token,
+		access_token_secret = access_token_secret
+		)
 
-	out_file_name = input("Enter a name for the output file:")
-	output = open(out_file_name, 'w')
-
-	n = input("Enter number of search queries: ")
 	queries = []
+	n = input("Enter number of search queries: ")
 	for i in range(int(n)):
 		queries.append(input("Enter query: "))
 	print(queries)
 
-	for q in queries:
-		url = search_url+quote_plus(q)
-		print(url)
-
+	for query in queries:
+		try:
+			searchQuery(ts, query)
+		except TwitterSearchException as e:
+			print(e)
 
 if __name__ == "__main__":
 	main()
