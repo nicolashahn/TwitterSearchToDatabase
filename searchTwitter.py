@@ -5,11 +5,21 @@
 # Search Twitter using their search API
 # Download tweets to given output file
 
+# settings file
+# create your own, format like so:
+
+# access_token		 	= '...'
+# access_token_secret 	= '...'
+# consumer_key			= '...'
+# consumer_secret		= '...'
+
 from TwitterSearch import *
 from settings import consumer_key, consumer_secret, access_token, access_token_secret
 from getpass import getpass
 import sys
 import pickle
+
+alphaChars = 'abcdefghijklmnopqrstuwxyzABCDEFGHIJKLMNOPQRSTUWXYZ#@'
 
 def searchQuery(ts, query):
 	print('Searching for: '+query)
@@ -19,7 +29,7 @@ def searchQuery(ts, query):
 	tso.set_language('en')
 	tso.set_include_entities(True)
 
-	out_file_name = 'query-'+'_'.join(keywords)
+	out_file_name = 'query-'+''.join([q for q in query if q in alphaChars])
 	output = open(out_file_name, 'w', encoding='utf-8')
 
 	i = 0
@@ -42,7 +52,6 @@ def main():
 	n = input("Enter number of search queries: ")
 	for i in range(int(n)):
 		queries.append(input("Enter query: "))
-	print(queries)
 
 	for query in queries:
 		try:

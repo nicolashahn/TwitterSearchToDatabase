@@ -1,0 +1,50 @@
+Twitter tables:
+
+* = existing field that Twitter will use
++ = add new field for Twitter data
+- = don't use the table's field for Twitter data
+? = possibly add new field - might be useful
+
+* posts:
+	* dataset_id
+	* discussion_id
+	* post_id
+	* author_id
+	* timestamp
+	- (parent_post_id)
+	* native_post_id
+	* text_id
+	- (parent_relation_id)
+	- (votes)
+	? retweets
+
+* authors:
+	* dataset_id
+	* author_id
+	* username
+	- (reputation)
+	? followers 
+
+* texts:
+	* dataset_id
+	* text_id
+	* text
+
++ hashtags:
+	+ dataset_id
+	+ hashtag_id
+	+ hashtag_text
+
++ hashtag_relations:
+	+ dataset_id
+	+ hashtag_relation_id
+	+ post_id
+	+ hashtag_id
+
++ user_mentions:
+	+ dataset_id
+	+ user_mention_id
+	+ post_id
+	+ author_id
+
+Use basic_markup table? Not sure
