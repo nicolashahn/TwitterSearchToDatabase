@@ -5,9 +5,7 @@
 # Search Twitter using their search API
 # Download tweets to given output file
 
-# settings file
-# create your own, format like so:
-
+# create a file called 'settings' and put the following 4 lines in (with your info):
 # access_token		 	= '...'
 # access_token_secret 	= '...'
 # consumer_key			= '...'
@@ -18,6 +16,7 @@ from settings import consumer_key, consumer_secret, access_token, access_token_s
 from getpass import getpass
 import sys
 import pickle
+from json import dumps as jDumps
 
 alphaChars = 'abcdefghijklmnopqrstuwxyzABCDEFGHIJKLMNOPQRSTUWXYZ#@'
 
@@ -35,7 +34,9 @@ def searchQuery(ts, query):
 	i = 0
 	for tweet in ts.search_tweets_iterable(tso):
 		i += 1
-		output.write(str(tweet)+'\n')
+		# changes single to double quotes, so json.load() works later
+		jsonTweet = jDumps(tweet)
+		output.write(jsonTweet+'\n')
 	output.close()
 	print('query "'+query+'" got '+str(i)+' tweets')
 

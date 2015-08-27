@@ -11,7 +11,7 @@ Twitter tables:
 	* post_id
 	* author_id
 	* timestamp
-	- (parent_post_id)
+	* parent_post_id - use in_reply_to_user field
 	* native_post_id
 	* text_id
 	- (parent_relation_id)

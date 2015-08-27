@@ -413,6 +413,7 @@ def createTableObjects(jObj,session):
 
 
 def addHashtagToSession(jObj,session):
+	print(jObj['entities']['hashtags'])
 	pass
 
 def addTextToSession(jObj,session):
