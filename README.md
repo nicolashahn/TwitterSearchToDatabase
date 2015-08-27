@@ -4,4 +4,9 @@ Given a search query, download a certain amount of tweets that fit that query, a
 ```
 twitterSearch.py
 ```
-Takes queries from the user and grabs the first x tweets that match.
+- Takes multiple search queries from the user
+- Dumps them in JSON format into individual output files
+```
+twitterJSONtoMySQL.py
+```
+- Takes these JSON dump files, inserts them into IAC database
