@@ -1,4 +1,4 @@
-# twitterSearch
+# Twitter Search To Database
 
 Given a search query, download a certain amount of tweets that fit that query, and then upload them to the IAC database.
 ```
@@ -10,3 +10,8 @@ twitterSearch.py
 twitterJSONtoMySQL.py
 ```
 - Takes these JSON dump files, inserts them into IAC database
+```
+twitterStructure.sql
+```
+- Updates IAC to allow for Twitter data
+- Run this before using twitterJSONtoMySQL.py
