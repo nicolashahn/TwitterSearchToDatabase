@@ -3,58 +3,93 @@
 /*
 ALTER TABLE `iac`.`authors` 
 ADD COLUMN `twitter_followers` MEDIUMINT(8) UNSIGNED NULL COMMENT '' AFTER `reputation`;
-
-ALTER TABLE `iac`.`posts` 
-ADD COLUMN `retweets` MEDIUMINT(8) UNSIGNED NULL COMMENT '' AFTER `votes`;
+ALTER TABLE `iac`.`authors` 
+ADD COLUMN `twitter_favorites` MEDIUMINT(8) UNSIGNED NULL COMMENT '' AFTER `twitter_followers`;
 
 CREATE TABLE `iac`.`hashtags` (
   `dataset_id` TINYINT(3) UNSIGNED NOT NULL COMMENT '',
   `hashtag_id` INT(20) UNSIGNED NOT NULL COMMENT '',
   `hashtag_text` VARCHAR(140) NULL COMMENT '',
   PRIMARY KEY (`dataset_id`, `hashtag_id`)  COMMENT '');
-*/
-SET FOREIGN_KEY_CHECKS = 0;
-
-SHOW ENGINE INNODB STATUS;
-
-CREATE TABLE `iac`.`hashtag_relations` (
-  `dataset_id` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `hashtag_relations_id` INT(20) UNSIGNED NOT NULL DEFAULT 0,
-  `hashtag_id` INT(20) UNSIGNED NOT NULL DEFAULT 0,
-  `post_id` INT(20) UNSIGNED NOT NULL DEFAULT 0,
-  PRIMARY KEY (`dataset_id`, `hashtag_relations_id`),
-  INDEX `dataset_hashtag_fk_idx` (`dataset_id` ASC, `hashtag_id` ASC),
-  INDEX `dataset_posts_fk_idx` (`dataset_id` ASC, `post_id` ASC),
-  CONSTRAINT `dataset_hashtag_fk`
-    FOREIGN KEY (`dataset_id` , `hashtag_id`)
-    REFERENCES `iac`.`hashtags` (`dataset_id` , `hashtag_id`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
-  CONSTRAINT `dataset_posts_fk`
-    FOREIGN KEY (`dataset_id` , `post_id`)
-    REFERENCES `iac`.`posts` (`dataset_id` , `post_id`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION);
-
-
-CREATE TABLE `iac`.`user_mentions` (
-  `dataset_id` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `user_mentions_id` INT(20) UNSIGNED NOT NULL DEFAULT 0,
-  `post_id` INT(20) UNSIGNED NOT NULL DEFAULT 0,
-  `author_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  PRIMARY KEY (`dataset_id`, `user_mentions_id`),
-  INDEX `author_fk1_idx` (`dataset_id` ASC, `author_id` ASC),
-  INDEX `post_fk1_idx` (`dataset_id` ASC, `post_id` ASC),
-  CONSTRAINT `author_fk1`
+  
+CREATE TABLE `iac`.`tweets` (
+  `dataset_id` TINYINT(3) UNSIGNED NOT NULL COMMENT '',
+  `tweet_id` INT(20) UNSIGNED NOT NULL COMMENT '',
+  `author_id` INT(10) UNSIGNED NOT NULL COMMENT '',
+  `timestamp` DATETIME NOT NULL COMMENT '',
+  `in_reply_to_author_id` INT(10) UNSIGNED NULL COMMENT '',
+  `native_tweet_id` VARCHAR(30) NOT NULL COMMENT '',
+  `text_id` INT(20) UNSIGNED NOT NULL COMMENT '',
+  `retweets` MEDIUMINT(8) ZEROFILL NOT NULL COMMENT '',
+  `favorites` MEDIUMINT(8) ZEROFILL NOT NULL COMMENT '',
+  PRIMARY KEY (`dataset_id`, `tweet_id`)  COMMENT '',
+  UNIQUE INDEX `tweet_id_UNIQUE` (`tweet_id` ASC)  COMMENT '',
+  UNIQUE INDEX `text_id_UNIQUE` (`text_id` ASC)  COMMENT '',
+  INDEX `t_auth_fk_idx` (`dataset_id` ASC, `author_id` ASC)  COMMENT '',
+  INDEX `t_text_fk_idx` (`dataset_id` ASC, `text_id` ASC)  COMMENT '',
+  CONSTRAINT `t_auth_fk`
     FOREIGN KEY (`dataset_id` , `author_id`)
     REFERENCES `iac`.`authors` (`dataset_id` , `author_id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `post_fk1`
-    FOREIGN KEY (`dataset_id` , `post_id`)
-    REFERENCES `iac`.`posts` (`dataset_id` , `post_id`)
+  CONSTRAINT `t_text_fk`
+    FOREIGN KEY (`dataset_id` , `text_id`)
+    REFERENCES `iac`.`texts` (`dataset_id` , `text_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `t_dataset_fk`
+    FOREIGN KEY (`dataset_id`)
+    REFERENCES `iac`.`datasets` (`dataset_id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION);
     
-SET FOREIGN_KEY_CHECKS = 1;
+CREATE TABLE `iac`.`hashtag_relations` (
+  `dataset_id` TINYINT(3) UNSIGNED NOT NULL COMMENT '',
+  `tweet_id` INT(20) UNSIGNED NOT NULL COMMENT '',
+  `hashtag_id` INT(20) UNSIGNED NOT NULL COMMENT '',
+  PRIMARY KEY (`dataset_id`, `tweet_id`, `hashtag_id`)  COMMENT '',
+  INDEX `tweet_fk_idx` (`dataset_id` ASC, `tweet_id` ASC)  COMMENT '',
+  INDEX `hashtag_fk_idx` (`dataset_id` ASC, `hashtag_id` ASC)  COMMENT '',
+  CONSTRAINT `hr_dataset_fk`
+    FOREIGN KEY (`dataset_id`)
+    REFERENCES `iac`.`datasets` (`dataset_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `hr_tweet_fk`
+    FOREIGN KEY (`dataset_id` , `tweet_id`)
+    REFERENCES `iac`.`tweets` (`dataset_id` , `tweet_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `hr_hashtag_fk`
+    FOREIGN KEY (`dataset_id` , `hashtag_id`)
+    REFERENCES `iac`.`hashtags` (`dataset_id` , `hashtag_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION);
+
+CREATE TABLE `iac`.`user_mentions` (
+  `dataset_id` TINYINT(3) UNSIGNED NOT NULL COMMENT '',
+  `user_mention_id` INT(20) UNSIGNED NOT NULL COMMENT '',
+  `tweet_id` INT(20) UNSIGNED NOT NULL COMMENT '',
+  `author_id` INT(20) UNSIGNED NOT NULL COMMENT '',
+  PRIMARY KEY (`dataset_id`, `user_mention_id`)  COMMENT '',
+  UNIQUE INDEX `user_mention_id_UNIQUE` (`user_mention_id` ASC)  COMMENT '',
+  INDEX `um_tweet_fk_idx` (`tweet_id` ASC, `dataset_id` ASC)  COMMENT '',
+  INDEX `um_authour_fk_idx` (`dataset_id` ASC, `author_id` ASC)  COMMENT '',
+  CONSTRAINT `um_dataset_fk`
+    FOREIGN KEY (`dataset_id`)
+    REFERENCES `iac`.`datasets` (`dataset_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `um_tweet_fk`
+    FOREIGN KEY (`tweet_id` , `dataset_id`)
+    REFERENCES `iac`.`tweets` (`tweet_id` , `dataset_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `um_authour_fk`
+    FOREIGN KEY (`dataset_id` , `author_id`)
+    REFERENCES `iac`.`authors` (`dataset_id` , `author_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION);
+
+*/
 
