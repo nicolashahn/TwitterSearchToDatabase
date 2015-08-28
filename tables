@@ -5,25 +5,24 @@ Twitter tables:
 - = don't use the table's field for Twitter data
 ? = possibly add new field - might be useful
 
-* posts:
-	* dataset_id
-	* discussion_id
-	* post_id
-	* author_id
-	* timestamp
-	* parent_post_id - use in_reply_to_user field
-	* native_post_id
-	* text_id
-	- (parent_relation_id)
-	- (votes)
-	? retweets
++ tweets:
+	+ dataset_id
+	+ tweet_id
+	+ author_id
+	+ timestamp
+	+ in_reply_to_author_id - author_id foreign key - int(10)
+	+ native_post_id - varchar(20)
+	+ text_id - int(20)
+	+ retweets - mediumint(8)
+	+ favorites - mediumint(8)
 
 * authors:
 	* dataset_id
 	* author_id
 	* username
 	- (reputation)
-	? followers 
+	? twitter_followers - mediumint(8)
+	? twitter_favorites - mediumint(8)
 
 * texts:
 	* dataset_id
@@ -46,5 +45,3 @@ Twitter tables:
 	+ user_mention_id
 	+ post_id
 	+ author_id
-
-Use basic_markup table? Not sure

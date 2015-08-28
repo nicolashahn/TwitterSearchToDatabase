@@ -397,6 +397,21 @@ def generateTableClasses(eng):
 	global post_inc, author_inc, hashtag_inc, user_mention_inc
 
 	# TODO: put incrementers, ABase classes in
+	# query db at start of script to see how many are already in there
+	post_inc = Incrementer()
+	author_inc = Incrementer()
+	text_inc = Incrementer()
+	hashtag_inc = Incrementer()
+	# hashtag_relation auto increments
+	user_mention_inc = Incrementer()
+
+	Post = ABase.classes.posts 
+	Author = ABase.classes.authors 
+	Text = ABase.classes.texts 
+	Hashtag = ABase.classes.hashtags 
+	HashtagRelation = ABase.classes.hashtag_relations
+	UserMention = ABase.classes.user_mentions
+
 
 
 ###################################
@@ -404,16 +419,17 @@ def generateTableClasses(eng):
 ###################################
 
 def createTableObjects(jObj,session):
-	addHashtagToSession(jObj,session)
+	addHashtagsToSession(jObj,session)
 	addTextToSession(jObj,session)
 	addAuthorToSession(jObj,session)
 	addUserMentionToSession(jObj,session)
 	addPostToSession(jObj,session)
-	addHashtagRelationToSession(jObj,session)
 
 
-def addHashtagToSession(jObj,session):
-	print(jObj['entities']['hashtags'])
+def addHashtagsToSession(jObj,session):
+	hashtags = jObj['entities']['hashtags']
+	for h in hashtags:
+		htext = h['text']
 	pass
 
 def addTextToSession(jObj,session):
