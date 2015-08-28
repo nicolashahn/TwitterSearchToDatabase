@@ -388,24 +388,25 @@ def createSession(eng):
 	session = Session()
 	return session
 
+# 
 def generateTableClasses(eng):
 	ABase = automap_base()
 	ABase.prepare(eng,reflect=True)
 
-	global Post, Author, Text, Hashtag, HashtagRelation, UserMention 
+	global Tweet, Author, Text, Hashtag, HashtagRelation, UserMention 
 	# let HashtagRelation auto increment in MySQL
 	global post_inc, author_inc, hashtag_inc, user_mention_inc
 
 	# TODO: put incrementers, ABase classes in
 	# query db at start of script to see how many are already in there
-	post_inc = Incrementer()
+	tweet_inc = Incrementer()
 	author_inc = Incrementer()
 	text_inc = Incrementer()
 	hashtag_inc = Incrementer()
 	# hashtag_relation auto increments
 	user_mention_inc = Incrementer()
 
-	Post = ABase.classes.posts 
+	Tweet = ABase.classes.tweets 
 	Author = ABase.classes.authors 
 	Text = ABase.classes.texts 
 	Hashtag = ABase.classes.hashtags 
@@ -418,30 +419,57 @@ def generateTableClasses(eng):
 # Table Insertions
 ###################################
 
+# add all table entries to the sqlalchemy session
 def createTableObjects(jObj,session):
 	addHashtagsToSession(jObj,session)
 	addTextToSession(jObj,session)
 	addAuthorToSession(jObj,session)
 	addUserMentionToSession(jObj,session)
-	addPostToSession(jObj,session)
+	addTweetToSession(jObj,session)
 
-
+# add hashtags if not already in the database
 def addHashtagsToSession(jObj,session):
 	hashtags = jObj['entities']['hashtags']
+	jObj['iac_hashtag_ids'] = []
 	for h in hashtags:
-		htext = h['text']
-	pass
+		hText = h['text']
+		if hText not in hashtag_dict:
+			hashtag_dict[hText] = hashtag_inc.inc()
+		hashtag = Hashtag(
+			dataset_id 		= twitter_id,
+			hashtag_id 		= hashtag_dict[hText]
+			hashtag_text 	= hText
+			)
+		session.add(hashtag)
+		jObj['iac_hashtag_ids'].append(hashtag_dict[hText])
 
 def addTextToSession(jObj,session):
-	pass
+	tText = jObj['text']
+	tId = text_inc.inc()
+	text = Text(
+		dataset_id 		= twitter_id,
+		text_id 		= tId,
+		text 			= tText
+		)
+	session.add(text)
+	jObj['iac_text_id'] = text_inc.inc()
 
+# add author if not already in db
 def addAuthorToSession(jObj,session):
-	pass
+	username = jObj['user']['screen_name']
+	if username not in author_dict:
+		author_dict[username] = author_inc.inc()
+		author = Author(
+			dataset_id 		= twitter_id,
+			author_id 		= author_dict[username],
+			username 		= username
+			)
+		session.add(author)
 
 def addUserMentionToSession(jObj,session):
 	pass
 
-def addPostToSession(jObj,session):
+def addTweetToSession(jObj,session):
 	pass
 
 def addHashtagRelationToSession(jObj,session):
@@ -457,11 +485,13 @@ def main(user=sys.argv[1],pword=sys.argv[2],db=sys.argv[3],dataFile=sys.argv[4])
 	# 	print("Example: python getRawJSON root password localhost/iac sampleComments")
 	# 	sys.exit(1)
 
+	# sqlalchemy magic
 	print('Connecting to database',db,'as user',user)
 	eng = connect(user, pword, db)
 	metadata = s.MetaData(bind=eng)
 	session = createSession(eng)
 	generateTableClasses(eng)
+	# run line-by-line through dataFile (to deal with multi-GB files)
 	print('Loading data from',dataFile)
 	with open(dataFile,'r', encoding='utf-8') as data:
 		jObjs = []
@@ -469,12 +499,14 @@ def main(user=sys.argv[1],pword=sys.argv[2],db=sys.argv[3],dataFile=sys.argv[4])
 		for line in data:
 			jObj = jsonLineToDict(line)
 			jObjs.append(jObj)
+			# every [batch_size] comments, add to DB
 			if len(jObjs) >= batch_size:
 				for jObj in jObjs:
 					# this adds each table entry to the session
 					createTableObjects(jObj,session)
 				print("Pushing comments up to",comment_index)
 				sys.stdout.flush()
+				# make sure the script doesn't stop just for an OurSQL warning
 				try:
 					session.commit()
 				except Exception:
