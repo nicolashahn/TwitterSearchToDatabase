@@ -26,6 +26,7 @@ batch_size = 1000
 # so we don't have to query to check if author/whatever already in db
 hashtag_dict = {}
 author_dict = {}
+tweet_list = []
 
 # temporary output file for checking things 
 # (print statements choke on unicode)
@@ -87,15 +88,6 @@ def generateTableClasses(eng):
 	ABase = automap_base()
 	ABase.prepare(eng,reflect=True)
 	global Tweet, Author, Text, Hashtag, HashtagRelation, UserMention 
-	global tweet_inc, author_inc, text_inc, hashtag_inc, user_mention_inc, hashtag_relation_inc
-	
-	tweet_inc = Incrementer()
-	author_inc = Incrementer()
-	text_inc = Incrementer()
-	hashtag_inc = Incrementer()
-	hashtag_relation_inc = Incrementer()
-	user_mention_inc = Incrementer()
-
 	Tweet = ABase.classes.tweets 
 	Author = ABase.classes.authors 
 	Text = ABase.classes.texts 
@@ -103,11 +95,57 @@ def generateTableClasses(eng):
 	HashtagRelation = ABase.classes.hashtag_relations
 	UserMention = ABase.classes.user_mentions
 
+def generateIncrementers(tweet_list,author_dict,hashtag_dict,hr_count,um_count):
+	global tweet_inc, author_inc, text_inc, hashtag_inc, user_mention_inc, hashtag_relation_inc
+	tweet_inc = Incrementer(len(tweet_list))
+	author_inc = Incrementer(len(author_dict))
+	text_inc = Incrementer(len(tweet_list))
+	hashtag_inc = Incrementer(len(hashtag_dict))
+	hashtag_relation_inc = Incrementer(hr_count)
+	user_mention_inc = Incrementer(um_count)
+
+#####################
+# Database Querying #
+#####################
+
+def getAuthorsFromDatabase(session):
+	aquery = session.query(Author).\
+				filter(Author.dataset_id==twitter_id)
+	author_dict = {}
+	for a in aquery.all():
+		author_dict[a.username] = a.author_id
+	return author_dict
+
+def getHashtagsFromDatabase(session):
+	hquery = session.query(Hashtag).\
+				filter(Hashtag.dataset_id==twitter_id)
+	hashtag_dict = {}
+	for h in hquery.all():
+		hashtag_dict[h.hashtag_text] = h.hashtag_id
+	return hashtag_dict
+
+def getTweetsFromDatabase(session):
+	tquery = session.query(Tweet).\
+				filter(Tweet.dataset_id==twitter_id)
+	tweet_list = []
+	for t in tquery.all():
+		tweet_list.append(t.native_tweet_id)
+	return tweet_list
+
+def getHashtagRelationCount(session):
+	hrquery = session.query(HashtagRelation).\
+				filter(HashtagRelation.dataset_id==twitter_id).count()
+	return hrquery
+
+def getUserMentionCount(session):
+	umquery = session.query(UserMention).\
+				filter(UserMention.dataset_id==twitter_id).count()
+	return umquery
 
 
-###################################
-# Table Insertions
-###################################
+####################
+# Table Insertions #
+####################
 
 # add all table entries to the sqlalchemy session
 def createTableObjects(jObj,session):
@@ -172,18 +210,20 @@ def addTweetToSession(jObj,session):
 		reply_author_id = author_dict[jObj['in_reply_to_screen_name']]
 	else:
 		reply_author_id = None
-	tweet = Tweet(
-		dataset_id 				= twitter_id,
-		tweet_id 				= tweet_id,
-		author_id 				= jObj['iac_author_id'],
-		timestamp 				= timestamp,
-		in_reply_to_author_id	= reply_author_id,
-		native_tweet_id 		= jObj['id_str'],
-		text_id 				= jObj['iac_text_id'],
-		retweets 				= jObj['retweet_count'],
-		favorites 				= jObj['favorite_count']
-		)
-	session.add(tweet)
+	if jObj['id_str'] not in tweet_list:
+		tweet = Tweet(
+			dataset_id 				= twitter_id,
+			tweet_id 				= tweet_id,
+			author_id 				= jObj['iac_author_id'],
+			timestamp 				= timestamp,
+			in_reply_to_author_id	= reply_author_id,
+			native_tweet_id 		= jObj['id_str'],
+			text_id 				= jObj['iac_text_id'],
+			retweets 				= jObj['retweet_count'],
+			favorites 				= jObj['favorite_count']
+			)
+		tweet_list.append(jObj['id_str'])
+		session.add(tweet)
 	jObj['iac_tweet_id'] = tweet_id
 
 # link up tweets to users mentioned in the tweet
@@ -238,13 +278,17 @@ def main(user=sys.argv[1],pword=sys.argv[2],db=sys.argv[3],dataFile=sys.argv[4])
 	metadata = s.MetaData(bind=eng)
 	session = createSession(eng)
 	generateTableClasses(eng)
+	# make sure we're not inserting any duplicate entries from another query
+	print('loading author, hashtag information from database')
+	global author_dict, hashtag_dict, tweet_list
+	author_dict = getAuthorsFromDatabase(session)
+	hashtag_dict = getHashtagsFromDatabase(session)
+	tweet_list = getTweetsFromDatabase(session)
+	hr_count = getHashtagRelationCount(session)
+	um_count = getUserMentionCount(session)
+	generateIncrementers(tweet_list,author_dict,hashtag_dict,hr_count,um_count)
 	# run line-by-line through dataFile (to deal with multi-GB files)
 	print('Loading data from',dataFile)
-
-	# TODO: add function to get hashtag, author data from database
-	# to populate hashtag_dict, author_dict, author_list
-	# so we don't insert duplicates if running this script multiple times
-
 	with open(dataFile,'r', encoding='utf-8') as data:
 		jObjs = []
 		comment_index = 1
@@ -266,6 +310,9 @@ def main(user=sys.argv[1],pword=sys.argv[2],db=sys.argv[3],dataFile=sys.argv[4])
 				session.commit()
 				jObjs = []
 			comment_index += 1
+		# the stragglers
+		for jObj in jObjs:
+			createTableObjects(jObj,session)
 		session.commit()
 
 if __name__ == "__main__":
