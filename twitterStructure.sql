@@ -90,6 +90,13 @@ CREATE TABLE `iac`.`user_mentions` (
     REFERENCES `iac`.`authors` (`dataset_id` , `author_id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION);
+    
+insert into datasets values(7,'twitter','https://twitter.com/', '144-character limited messages');
 
+ALTER TABLE `iac`.`hashtag_relations` 
+ADD COLUMN `hashtag_relation_id` INT(20) UNSIGNED NOT NULL COMMENT '' AFTER `dataset_id`,
+DROP PRIMARY KEY,
+ADD PRIMARY KEY (`dataset_id`, `hashtag_relation_id`)  COMMENT '';
+
+alter table user_mentions modify author_id int(10) unsigned not null;
 */
-

@@ -5,7 +5,8 @@
 # Search Twitter using their search API
 # Download tweets to given output file
 
-# create a file called 'settings' and put the following 4 lines in (with your info):
+# go through steps to register Twitter app
+# create a file called 'settings.py' and put the following 4 lines in (with your info):
 # access_token		 	= '...'
 # access_token_secret 	= '...'
 # consumer_key			= '...'
