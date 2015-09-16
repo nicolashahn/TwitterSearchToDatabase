@@ -7,9 +7,9 @@ twitterSearch.py
 - Takes multiple search queries from the user
 - Dumps them in JSON format into individual output files
 ```
-twitterJSONtoMySQL.py
+twitterJSONtoMySQL.py <username> <password> <host/db> <query_file>
 ```
-- Takes these JSON dump files, inserts them into IAC database
+- Takes these JSON dump files, inserts them into database
 ```
 twitterStructure.sql
 ```
