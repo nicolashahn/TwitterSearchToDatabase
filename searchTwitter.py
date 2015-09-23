@@ -18,8 +18,11 @@ from getpass import getpass
 import sys
 import pickle
 from json import dumps as jDumps
+import datetime
 
 alphaChars = 'abcdefghijklmnopqrstuwxyzABCDEFGHIJKLMNOPQRSTUWXYZ#@'
+
+currtime = str(datetime.datetime.now())
 
 def searchQuery(ts, query):
 	print('Searching for: '+query)
