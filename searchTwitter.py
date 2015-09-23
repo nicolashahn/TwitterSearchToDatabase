@@ -23,6 +23,9 @@ import datetime
 alphaChars = 'abcdefghijklmnopqrstuwxyzABCDEFGHIJKLMNOPQRSTUWXYZ#@'
 
 currtime = str(datetime.datetime.now())
+currtime = currtime.replace(' ','-').replace(':','-').split('.')[0]
+
+queriesFolder = 'queries'
 
 def searchQuery(ts, query):
 	print('Searching for: '+query)
@@ -33,7 +36,8 @@ def searchQuery(ts, query):
 	tso.set_include_entities(True)
 
 	out_file_name = 'query-'+''.join([q for q in query if q in alphaChars])
-	output = open(out_file_name, 'w', encoding='utf-8')
+	out_file_name += '-'+currtime
+	output = open(queriesFolder+"/"+out_file_name, 'w', encoding='utf-8')
 
 	i = 0
 	for tweet in ts.search_tweets_iterable(tso):
