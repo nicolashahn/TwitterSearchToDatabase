@@ -26,6 +26,9 @@ batch_size = 1000
 # so we don't have to query to check if author/whatever already in db
 hashtag_dict = {}
 author_dict = {}
+# maps native tweet ids to db ids, includes tweets not in db
+tweet_dict = {}
+# for native tweet ids in the database
 tweet_list = []
 
 # temporary output file for checking things 
@@ -95,11 +98,14 @@ def generateTableClasses(eng):
 	HashtagRelation = ABase.classes.hashtag_relations
 	UserMention = ABase.classes.user_mentions
 
-def generateIncrementers(tweet_list,author_dict,hashtag_dict,hr_count,um_count):
-	global tweet_inc, author_inc, text_inc, hashtag_inc, user_mention_inc, hashtag_relation_inc
-	tweet_inc = Incrementer(len(tweet_list))
+def generateIncrementers(tweet_dict, author_dict,hashtag_dict,hr_count,um_count):
+	global tweet_inc, author_inc, hashtag_inc, user_mention_inc, hashtag_relation_inc
+	t_count = 0
+	if len(tweet_dict)>0:
+		t_count = max([tweet_dict[i] for i in tweet_dict])
+	tweet_inc = Incrementer(t_count)
 	author_inc = Incrementer(len(author_dict))
-	text_inc = Incrementer(len(tweet_list))
+	# text_inc = Incrementer(len(tweet_list))
 	hashtag_inc = Incrementer(len(hashtag_dict))
 	hashtag_relation_inc = Incrementer(hr_count)
 	user_mention_inc = Incrementer(um_count)
@@ -128,9 +134,14 @@ def getTweetsFromDatabase(session):
 	tquery = session.query(Tweet).\
 				filter(Tweet.dataset_id==twitter_id)
 	tweet_list = []
+	tweet_dict = {}
 	for t in tquery.all():
 		tweet_list.append(t.native_tweet_id)
-	return tweet_list
+		tweet_dict[t.native_tweet_id] = t.tweet_id
+		if (t.in_reply_to_native_tweet_id not in tweet_dict
+			and t.in_reply_to_native_tweet_id != None):
+			tweet_dict[t.in_reply_to_native_tweet_id] = t.in_reply_to_tweet_id
+	return tweet_list, tweet_dict
 
 def getHashtagRelationCount(session):
 	hrquery = session.query(HashtagRelation).\
@@ -172,17 +183,6 @@ def addHashtagsToSession(jObj,session):
 			session.add(hashtag)
 		jObj['iac_hashtag_ids'].append(hashtag_dict[hText])
 
-def addTextToSession(jObj,session):
-	t_text = jObj['text']
-	t_id = text_inc.inc()
-	text = Text(
-		dataset_id 		= twitter_id,
-		text_id 		= t_id,
-		text 			= t_text
-		)
-	session.add(text)
-	jObj['iac_text_id'] = t_id
-
 # add author only if not already in db
 def addAuthorToSession(jObj,session):
 	username = jObj['user']['screen_name']
@@ -200,31 +200,55 @@ def addAuthorToSession(jObj,session):
 		session.add(author)
 	jObj['iac_author_id'] = author_dict[username]
 
-def addTweetToSession(jObj,session):
+def addTextToSession(jObj,session):
+	t_text = jObj['text']
 	tweet_id = tweet_inc.inc()
+	text_id = tweet_id
+	jObj['iac_tweet_id'] = tweet_id
+	text = Text(
+		dataset_id 		= twitter_id,
+		text_id 		= text_id,
+		text 			= t_text
+		)
+	session.add(text)
+	jObj['iac_text_id'] = text_id
+
+def addTweetToSession(jObj,session):
+	tweet_id = jObj['iac_text_id'] 
 	timestamp = time.strftime('%Y-%m-%d %H:%M:%S', 
 		time.strptime(jObj['created_at'],
 		'%a %b %d %H:%M:%S +0000 %Y'))
-	# timestamp = jObj['created_at']
+
 	if jObj['in_reply_to_user_id'] in author_dict:
 		reply_author_id = author_dict[jObj['in_reply_to_screen_name']]
 	else:
 		reply_author_id = None
+
+	if (jObj['in_reply_to_status_id_str'] not in tweet_dict 
+		and jObj['in_reply_to_status_id_str'] != None):
+		tweet_dict[jObj['in_reply_to_status_id_str']] = tweet_inc.inc()
+	else:
+		tweet_dict[jObj['in_reply_to_status_id_str']] = None
+	reply_tweet_id = tweet_dict[jObj['in_reply_to_status_id_str']]
+
 	if jObj['id_str'] not in tweet_list:
 		tweet = Tweet(
-			dataset_id 				= twitter_id,
-			tweet_id 				= tweet_id,
-			author_id 				= jObj['iac_author_id'],
-			timestamp 				= timestamp,
-			in_reply_to_author_id	= reply_author_id,
-			native_tweet_id 		= jObj['id_str'],
-			text_id 				= jObj['iac_text_id'],
-			retweets 				= jObj['retweet_count'],
-			favorites 				= jObj['favorite_count']
+			dataset_id 					= twitter_id,
+			tweet_id 					= tweet_id,
+			author_id 					= jObj['iac_author_id'],
+			timestamp 					= timestamp,
+			in_reply_to_author_id		= reply_author_id,
+			in_reply_to_tweet_id 		= reply_tweet_id,
+			in_reply_to_native_tweet_id = jObj['in_reply_to_status_id_str'],
+			native_tweet_id 			= jObj['id_str'],
+			text_id 					= jObj['iac_text_id'],
+			retweets 					= jObj['retweet_count'],
+			favorites 					= jObj['favorite_count']
 			)
 		tweet_list.append(jObj['id_str'])
+		if jObj['id_str'] not in tweet_dict:
+			tweet_dict[jObj['id_str']] = tweet_id
 		session.add(tweet)
-	jObj['iac_tweet_id'] = tweet_id
 
 # link up tweets to users mentioned in the tweet
 # also insert any users that are not in the database
@@ -280,13 +304,13 @@ def main(user=sys.argv[1],pword=sys.argv[2],db=sys.argv[3],dataFile=sys.argv[4])
 	generateTableClasses(eng)
 	# make sure we're not inserting any duplicate entries from another query
 	print('loading author, hashtag information from database')
-	global author_dict, hashtag_dict, tweet_list
+	global author_dict, hashtag_dict, tweet_list, tweet_dict
 	author_dict = getAuthorsFromDatabase(session)
 	hashtag_dict = getHashtagsFromDatabase(session)
-	tweet_list = getTweetsFromDatabase(session)
+	tweet_list, tweet_dict = getTweetsFromDatabase(session)
 	hr_count = getHashtagRelationCount(session)
 	um_count = getUserMentionCount(session)
-	generateIncrementers(tweet_list,author_dict,hashtag_dict,hr_count,um_count)
+	generateIncrementers(tweet_dict,author_dict,hashtag_dict,hr_count,um_count)
 	# run line-by-line through dataFile (to deal with multi-GB files)
 	print('Loading data from',dataFile)
 	with open(dataFile,'r', encoding='utf-8') as data:

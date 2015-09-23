@@ -101,4 +101,6 @@ ADD PRIMARY KEY (`dataset_id`, `hashtag_relation_id`)  COMMENT '';
 alter table user_mentions modify author_id int(10) unsigned not null;
 
 alter table tweets add in_reply_to_tweet_id int(20) unsigned;
+
+alter table tweets add in_reply_to_native_tweet_id varchar(30);
 */
