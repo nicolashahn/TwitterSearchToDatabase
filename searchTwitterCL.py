@@ -27,7 +27,7 @@ alphaChars = 'abcdefghijklmnopqrstuwxyzABCDEFGHIJKLMNOPQRSTUWXYZ#@'
 currtime = str(datetime.datetime.now())
 currtime = currtime.replace(' ','-').replace(':','-').split('.')[0]
 
-queriesFolder = 'queries'
+queriesFolder = '/home/nick/TwitterSearchToDatabase/queries'
 
 def searchQuery(ts, query):
     print('Searching for: '+query)
@@ -52,24 +52,30 @@ def searchQuery(ts, query):
 
 def main():
 
+    if len(sys.argv) < 2:
+        print("Usage: python3 searchTwitterCL.py '#query1' 'query2' 'query3' etc.")
+        exit()  
+
     ts = TwitterSearch(
         consumer_key = consumer_key,
         consumer_secret = consumer_secret,
         access_token = access_token,
         access_token_secret = access_token_secret
         )
-
-    queries = []
+    
+    queries = sys.argv[1:]
+    # for i in range(1,len(sys.argv)):
+    #     queries.append(sys.argv[i])
     # n = input("Enter number of search queries: ")
     # for i in range(int(n)):
     #   queries.append(input("Enter query: "))
-    print("Enter queries followed by return. When done submit empty query.")
-    while True:
-        query = input("Enter query: ")
-        if query != "":
-            queries.append(query)
-        else: 
-            break
+    # print("Enter queries followed by return. When done submit empty query.")
+    # while True:
+    #     query = input("Enter query: ")
+    #     if query != "":
+    #         queries.append(query)
+    #     else: 
+    #         break
         
 
     for query in queries:

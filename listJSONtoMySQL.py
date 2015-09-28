@@ -24,7 +24,7 @@ twitter_id = 7
 # how many objects to push to server at a time
 batch_size = 1000
 
-queriesFolder = 'queries'
+queriesFolder = '/home/nick/TwitterSearchToDatabase/queries'
 
 # {native_id: db_id}
 # so we don't have to query to check if author/whatever already in db
@@ -37,7 +37,7 @@ tweet_list = []
 
 # temporary output file for checking things 
 # (print statements choke on unicode)
-tempOut = open('tempOut','w', encoding='utf-8')
+# tempOut = open('tempOut','w', encoding='utf-8')
 
 ###################################
 # JSON data manipulation
