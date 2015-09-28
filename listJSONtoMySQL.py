@@ -1,5 +1,5 @@
-# twitterJSONtoMySQL.py
-# take JSON dump files from searchTwitter.py
+# listJSONtoMySQL.py
+# take folder full of JSON dump files from searchTwitter.py
 # insert them into the IAC MySQL database
 
 import json
