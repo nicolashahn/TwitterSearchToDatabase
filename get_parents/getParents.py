@@ -15,10 +15,10 @@ from TwitterSearch import *
 from settings import consumer_key, consumer_secret, access_token, access_token_secret
 from getpass import getpass
 import sys
-import pickle
-import json
+import os
 from json import dumps as jDumps
 import datetime
+import time
 
 # allowed chars for filenames
 alphaChars = 'abcdefghijklmnopqrstuwxyzABCDEFGHIJKLMNOPQRSTUWXYZ#@'
@@ -29,7 +29,7 @@ currtime = currtime.replace(' ','-').replace(':','-').split('.')[0]
 
 queriesFolder = '/home/nick/TwitterSearchToDatabase/queries'
 oldParentIdFile = '/home/nick/TwitterSearchToDatabase/get_parents/parent_ids'
-outFile = queriesFolder+'parent-tweets-'+currtime
+outFile = queriesFolder+'/parent-tweets-'+currtime
 
 #########
 # MySQL #
@@ -79,16 +79,23 @@ def getOldParentIds(oldFile):
     return old_parent_ids
 
 # write the new parent ids to the file
-def writeNewParentIds(new_ids, oldFile):
-    with open(oldFile,'a') as f:
-        for iac_id, native_id in new_ids:
-            f.write(str(iac_id)+" "+native_id+'\n')
+# def writeNewParentIds(new_ids, oldFile):
+#     with open(oldFile,'a') as f:
+#         for iac_id, native_id in new_ids:
+#             f.write(str(iac_id)+" "+native_id+'\n')
+
+# write single parent id to old parent file
+def recordParentId(iac_id, native_id, parentFile):
+    with open(parentFile,'a') as f:
+        f.write(str(iac_id)+' '+native_id+'\n')
+    
 
 ###########################
 # searchTwitter functions #
 ###########################
 
 # search for each parent's native twitter id, should get 1 result per query
+# record the json data in a file in queries folder, and save the iac and native ids
 def searchQuery(ts, query, outFile):
     print('Searching for: '+query)
     tso = TwitterSearchOrder()
@@ -96,15 +103,11 @@ def searchQuery(ts, query, outFile):
     tso.set_keywords(keywords)
     tso.set_language('en')
     tso.set_include_entities(True)
-
     with open(outFile,'a') as output:
-        i = 0
         for tweet in ts.search_tweets_iterable(tso):
-            i += 1
             # changes single to double quotes, so json.load() works later
             jsonTweet = jDumps(tweet)
             output.write(jsonTweet+'\n')
-        print('query "'+query+'" got '+str(i)+' tweets')
 
 ########
 # Main #
@@ -125,20 +128,36 @@ def main(user=sys.argv[1],pword=sys.argv[2],db=sys.argv[3]):
     metadata = s.MetaData(bind=eng)
     session = createSession(eng)
     generateTableClasses(eng)
-
+    # get list of old parent ids that are already in db
+    print("Getting parent tweet ids from database")
     parent_ids = getParentTweetIds(session)
-    old_parent_ids = getOldParentIds(oldParentIdFile)
+    if os.path.exists(oldParentIdFile):
+        old_parent_ids = getOldParentIds(oldParentIdFile)
+    else:
+        old_parent_ids = []
+        open(oldParentIdFile,'w')
+    # get parent ids that aren't yet in database
     new_parent_ids = [i for i in parent_ids if i not in old_parent_ids]
+    print(len(new_parent_ids),"new parent tweets found")
+    # get the tweets with those ids and throw em in query folder
+    i = 0
     for iac_id, native_id in new_parent_ids:
-        searchQuery(ts, native_id, outFile)
-
-    writeNewParentIds(new_parent_ids,oldParentIdFile)
+        i += 1
+        if i < 180:
+            # search for the native parent id, record both the 
+            # json in outFile, and the id in oldParentIdFile
+            searchQuery(ts, native_id, outFile)
+            recordParentId(iac_id, native_id, oldParentIdFile)
+        else:
+            i = 0
+            print("Waiting for ~15 minutes because of rate limit")
+            # add 5 seconds just to be safe
+            time.sleep(905)
+    # append new tweet ids to log file of old ones
+    # print("Writing tweets to file")
+    # writeNewParentIds(new_parent_ids,oldParentIdFile)
     
-    for query in queries:
-        try:
-            searchQuery(ts, query)
-        except TwitterSearchException as e:
-            print(e)
 
 if __name__ == "__main__":
     main()
+
