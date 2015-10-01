@@ -143,14 +143,19 @@ def main(user=sys.argv[1],pword=sys.argv[2],db=sys.argv[3]):
     i = 0
     for iac_id, native_id in new_parent_ids:
         i += 1
-        if i < 180:
+        if i <= 180:
             # search for the native parent id, record both the 
             # json in outFile, and the id in oldParentIdFile
-            searchQuery(ts, native_id, outFile)
-            recordParentId(iac_id, native_id, oldParentIdFile)
+            try:
+                searchQuery(ts, native_id, outFile)
+                recordParentId(iac_id, native_id, oldParentIdFile)
+            except TwitterSearchException as e:
+                print("TwitterSearchException (rate limited), waiting ~15 minutes")
+                i = 0
+                time.sleep(905)
         else:
             i = 0
-            print("Waiting for ~15 minutes because of rate limit")
+            print("Waiting for ~15 minutes to avoid rate limit")
             # add 5 seconds just to be safe
             time.sleep(905)
     # append new tweet ids to log file of old ones
